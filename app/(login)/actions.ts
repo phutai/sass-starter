@@ -13,6 +13,7 @@ import {
   type NewTeam,
   type NewTeamMember,
   type NewActivityLog,
+  type Invitation,
   ActivityType,
   invitations
 } from '@/lib/db/schema';
@@ -25,6 +26,7 @@ import {
   validatedAction,
   validatedActionWithUser
 } from '@/lib/auth/middleware';
+import { sendTeamInvitationEmail } from '@/lib/email/resend';
 
 async function logActivity(
   teamId: number | null | undefined,
@@ -42,6 +44,26 @@ async function logActivity(
     ipAddress: ipAddress || ''
   };
   await db.insert(activityLogs).values(newActivity);
+}
+
+function getBaseUrl() {
+  return (process.env.BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+}
+
+function getInvitationUrl(invitationId: number) {
+  return `${getBaseUrl()}/sign-up?inviteId=${invitationId}`;
+}
+
+async function sendInvitationEmailForRecord(
+  invitation: Pick<Invitation, 'id' | 'email' | 'role'>,
+  teamName: string | null
+) {
+  return sendTeamInvitationEmail({
+    to: invitation.email,
+    teamName: teamName || 'your team',
+    role: invitation.role,
+    inviteUrl: getInvitationUrl(invitation.id)
+  });
 }
 
 const signInSchema = z.object({
@@ -72,6 +94,14 @@ export const signIn = validatedAction(signInSchema, async (data, formData) => {
   }
 
   const { user: foundUser, team: foundTeam } = userWithTeam[0];
+
+  if (!foundUser.passwordHash) {
+    return {
+      error: 'This account uses Google or Facebook sign-in.',
+      email,
+      password
+    };
+  }
 
   const isPasswordValid = await comparePasswords(
     password,
@@ -239,6 +269,15 @@ export const updatePassword = validatedActionWithUser(
   async (data, _, user) => {
     const { currentPassword, newPassword, confirmPassword } = data;
 
+    if (!user.passwordHash) {
+      return {
+        currentPassword,
+        newPassword,
+        confirmPassword,
+        error: 'This account uses Google or Facebook sign-in.'
+      };
+    }
+
     const isPasswordValid = await comparePasswords(
       currentPassword,
       user.passwordHash
@@ -296,6 +335,13 @@ export const deleteAccount = validatedActionWithUser(
   deleteAccountSchema,
   async (data, _, user) => {
     const { password } = data;
+
+    if (!user.passwordHash) {
+      return {
+        password,
+        error: 'This account uses Google or Facebook sign-in.'
+      };
+    }
 
     const isPasswordValid = await comparePasswords(password, user.passwordHash);
     if (!isPasswordValid) {
@@ -359,7 +405,7 @@ export const updateAccount = validatedActionWithUser(
 );
 
 const removeTeamMemberSchema = z.object({
-  memberId: z.number()
+  memberId: z.coerce.number().int().positive()
 });
 
 export const removeTeamMember = validatedActionWithUser(
@@ -370,6 +416,10 @@ export const removeTeamMember = validatedActionWithUser(
 
     if (!userWithTeam?.teamId) {
       return { error: 'User is not part of a team' };
+    }
+
+    if (userWithTeam.teamRole !== 'owner') {
+      return { error: 'Only team owners can remove team members' };
     }
 
     await db
@@ -406,6 +456,10 @@ export const inviteTeamMember = validatedActionWithUser(
       return { error: 'User is not part of a team' };
     }
 
+    if (userWithTeam.teamRole !== 'owner') {
+      return { error: 'Only team owners can invite team members' };
+    }
+
     const existingMember = await db
       .select()
       .from(users)
@@ -437,13 +491,16 @@ export const inviteTeamMember = validatedActionWithUser(
     }
 
     // Create a new invitation
-    await db.insert(invitations).values({
-      teamId: userWithTeam.teamId,
-      email,
-      role,
-      invitedBy: user.id,
-      status: 'pending'
-    });
+    const [invitation] = await db
+      .insert(invitations)
+      .values({
+        teamId: userWithTeam.teamId,
+        email,
+        role,
+        invitedBy: user.id,
+        status: 'pending'
+      })
+      .returning();
 
     await logActivity(
       userWithTeam.teamId,
@@ -451,9 +508,114 @@ export const inviteTeamMember = validatedActionWithUser(
       ActivityType.INVITE_TEAM_MEMBER
     );
 
-    // TODO: Send invitation email and include ?inviteId={id} to sign-up URL
-    // await sendInvitationEmail(email, userWithTeam.team.name, role)
+    const emailResult = await sendInvitationEmailForRecord(
+      invitation,
+      userWithTeam.teamName
+    );
 
-    return { success: 'Invitation sent successfully' };
+    if (!emailResult.sent) {
+      return {
+        error: `Invitation created, but email was not sent: ${emailResult.error}`,
+        invitationId: invitation.id
+      };
+    }
+
+    return {
+      success: 'Invitation email sent successfully',
+      invitationId: invitation.id
+    };
+  }
+);
+
+const revokeInvitationSchema = z.object({
+  invitationId: z.coerce.number().int().positive()
+});
+
+export const resendInvitation = validatedActionWithUser(
+  revokeInvitationSchema,
+  async (data, _, user) => {
+    const userWithTeam = await getUserWithTeam(user.id);
+
+    if (!userWithTeam?.teamId) {
+      return { error: 'User is not part of a team' };
+    }
+
+    if (userWithTeam.teamRole !== 'owner') {
+      return { error: 'Only team owners can resend invitations' };
+    }
+
+    const [invitation] = await db
+      .select()
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.id, data.invitationId),
+          eq(invitations.teamId, userWithTeam.teamId),
+          eq(invitations.status, 'pending')
+        )
+      )
+      .limit(1);
+
+    if (!invitation) {
+      return { error: 'Invitation not found or already closed' };
+    }
+
+    const emailResult = await sendInvitationEmailForRecord(
+      invitation,
+      userWithTeam.teamName
+    );
+
+    if (!emailResult.sent) {
+      return { error: `Invitation email was not sent: ${emailResult.error}` };
+    }
+
+    await logActivity(
+      userWithTeam.teamId,
+      user.id,
+      ActivityType.RESEND_INVITATION
+    );
+
+    return { success: 'Invitation email resent successfully' };
+  }
+);
+
+export const revokeInvitation = validatedActionWithUser(
+  revokeInvitationSchema,
+  async (data, _, user) => {
+    const userWithTeam = await getUserWithTeam(user.id);
+
+    if (!userWithTeam?.teamId) {
+      return { error: 'User is not part of a team' };
+    }
+
+    if (userWithTeam.teamRole !== 'owner') {
+      return { error: 'Only team owners can revoke invitations' };
+    }
+
+    const [invitation] = await db
+      .select()
+      .from(invitations)
+      .where(
+        and(
+          eq(invitations.id, data.invitationId),
+          eq(invitations.teamId, userWithTeam.teamId),
+          eq(invitations.status, 'pending')
+        )
+      )
+      .limit(1);
+
+    if (!invitation) {
+      return { error: 'Invitation not found or already closed' };
+    }
+
+    await Promise.all([
+      db
+        .update(invitations)
+        .set({ status: 'revoked' })
+        .where(eq(invitations.id, invitation.id)),
+      logActivity(userWithTeam.teamId, user.id, ActivityType.REVOKE_INVITATION)
+    ]);
+
+    return { success: 'Invitation revoked successfully' };
   }
 );

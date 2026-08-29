@@ -5,7 +5,12 @@ import { createCheckoutSession, createCustomerPortalSession } from './stripe';
 import { withTeam } from '@/lib/auth/middleware';
 
 export const checkoutAction = withTeam(async (formData, team) => {
-  const priceId = formData.get('priceId') as string;
+  const priceId = formData.get('priceId');
+
+  if (typeof priceId !== 'string' || !priceId.trim()) {
+    redirect('/pricing');
+  }
+
   await createCheckoutSession({ team: team, priceId });
 });
 

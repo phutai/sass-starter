@@ -32,6 +32,7 @@ export default async function PricingPage() {
             'Email Support',
           ]}
           priceId={basePrice?.id}
+          isAvailable={Boolean(basePrice?.id)}
         />
         <PricingCard
           name={plusPlan?.name || 'Plus'}
@@ -44,6 +45,7 @@ export default async function PricingPage() {
             '24/7 Support + Slack Access',
           ]}
           priceId={plusPrice?.id}
+          isAvailable={Boolean(plusPrice?.id)}
         />
       </div>
     </main>
@@ -57,6 +59,7 @@ function PricingCard({
   trialDays,
   features,
   priceId,
+  isAvailable,
 }: {
   name: string;
   price: number;
@@ -64,31 +67,37 @@ function PricingCard({
   trialDays: number;
   features: string[];
   priceId?: string;
+  isAvailable: boolean;
 }) {
   return (
     <div className="pt-6">
-      <h2 className="text-2xl font-medium text-gray-900 mb-2">{name}</h2>
-      <p className="text-sm text-gray-600 mb-4">
+      <h2 className="text-2xl font-medium mb-2">{name}</h2>
+      <p className="text-sm text-muted mb-4">
         with {trialDays} day free trial
       </p>
-      <p className="text-4xl font-medium text-gray-900 mb-6">
+      <p className="text-4xl font-medium mb-6">
         ${price / 100}{' '}
-        <span className="text-xl font-normal text-gray-600">
+        <span className="text-xl font-normal text-muted">
           per user / {interval}
         </span>
       </p>
       <ul className="space-y-4 mb-8">
         {features.map((feature, index) => (
           <li key={index} className="flex items-start">
-            <Check className="h-5 w-5 text-orange-500 mr-2 mt-0.5 flex-shrink-0" />
-            <span className="text-gray-700">{feature}</span>
+            <Check className="h-5 w-5 text-accent mr-2 mt-0.5 flex-shrink-0" />
+            <span className="text-foreground/80">{feature}</span>
           </li>
         ))}
       </ul>
       <form action={checkoutAction}>
-        <input type="hidden" name="priceId" value={priceId} />
-        <SubmitButton />
+        {priceId ? <input type="hidden" name="priceId" value={priceId} /> : null}
+        <SubmitButton isDisabled={!isAvailable} />
       </form>
+      {!isAvailable ? (
+        <p className="mt-3 text-sm text-muted">
+          This plan needs an active Stripe price before checkout is available.
+        </p>
+      ) : null}
     </div>
   );
 }

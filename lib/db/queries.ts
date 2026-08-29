@@ -1,6 +1,6 @@
 import { desc, and, eq, isNull } from 'drizzle-orm';
 import { db } from './drizzle';
-import { activityLogs, teamMembers, teams, users } from './schema';
+import { activityLogs, invitations, teamMembers, teams, users } from './schema';
 import { cookies } from 'next/headers';
 import { verifyToken } from '@/lib/auth/session';
 
@@ -68,10 +68,13 @@ export async function getUserWithTeam(userId: number) {
   const result = await db
     .select({
       user: users,
-      teamId: teamMembers.teamId
+      teamId: teamMembers.teamId,
+      teamRole: teamMembers.role,
+      teamName: teams.name
     })
     .from(users)
     .leftJoin(teamMembers, eq(users.id, teamMembers.userId))
+    .leftJoin(teams, eq(teamMembers.teamId, teams.id))
     .where(eq(users.id, userId))
     .limit(1);
 
@@ -120,6 +123,10 @@ export async function getTeamForUser() {
                 }
               }
             }
+          },
+          invitations: {
+            where: eq(invitations.status, 'pending'),
+            orderBy: desc(invitations.invitedAt)
           }
         }
       }

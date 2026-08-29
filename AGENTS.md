@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-This is a Next.js SaaS starter using the App Router. Route groups live in `app/`: `(login)` contains sign-in/sign-up flows, `(dashboard)` contains authenticated pages, and `app/api` contains API routes. UI primitives are in `components/ui`, following shadcn/ui conventions. Shared utilities and server logic live in `lib`, with database code under `lib/db`, auth helpers under `lib/auth`, and Stripe integration under `lib/payments`. Drizzle migrations are stored in `lib/db/migrations`. Global styles are in `app/globals.css`.
+This is a Next.js SaaS starter using the App Router. Route groups live in `app/`: `(login)` contains sign-in/sign-up flows, `(dashboard)` contains authenticated pages, and `app/api` contains API routes. UI primitives come from HeroUI via `@heroui/react`, with shared component styles from `@heroui/styles`. Shared utilities and server logic live in `lib`, with database code under `lib/db`, auth helpers under `lib/auth`, and Stripe integration under `lib/payments`. Drizzle migrations are stored in `lib/db/migrations`. Global styles are in `app/globals.css`.
 
 ## Build, Test, and Development Commands
 
@@ -17,7 +17,7 @@ This is a Next.js SaaS starter using the App Router. Route groups live in `app/`
 
 ## Coding Style & Naming Conventions
 
-Write TypeScript with strict types enabled. Prefer named exports for shared helpers and components. Use the `@/` path alias, for example `@/lib/db/queries`. Keep React components in PascalCase, functions and variables in camelCase, and route filenames lowercase as required by Next.js (`page.tsx`, `route.ts`, `layout.tsx`). Match the surrounding style: most app and database files use two-space indentation and single quotes, while generated shadcn/ui components may use double quotes.
+Write TypeScript with strict types enabled. Prefer named exports for shared helpers and components. Use the `@/` path alias, for example `@/lib/db/queries`. Keep React components in PascalCase, functions and variables in camelCase, and route filenames lowercase as required by Next.js (`page.tsx`, `route.ts`, `layout.tsx`). Match the surrounding style: most app and database files use two-space indentation and single quotes.
 
 ## Testing Guidelines
 

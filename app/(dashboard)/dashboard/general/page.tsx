@@ -1,15 +1,12 @@
 'use client';
 
 import { useActionState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
+import { Button, Card, Input, Label, Spinner } from '@heroui/react';
 import { updateAccount } from '@/app/(login)/actions';
 import { User } from '@/lib/db/schema';
 import useSWR from 'swr';
 import { Suspense } from 'react';
+import { Mail, Save, UserRound } from 'lucide-react';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -42,6 +39,7 @@ function AccountForm({
           placeholder="Enter your name"
           defaultValue={state.name || nameValue}
           required
+          fullWidth
         />
       </div>
       <div>
@@ -55,6 +53,7 @@ function AccountForm({
           placeholder="Enter your email"
           defaultValue={emailValue}
           required
+          fullWidth
         />
       </div>
     </>
@@ -79,43 +78,69 @@ export default function GeneralPage() {
   );
 
   return (
-    <section className="flex-1 p-4 lg:p-8">
-      <h1 className="text-lg lg:text-2xl font-medium text-gray-900 mb-6">
-        General Settings
-      </h1>
+    <section className="mx-auto w-full max-w-5xl px-4 py-6 lg:px-8">
+      <div className="mb-6">
+        <p className="text-sm font-medium text-muted">Profile</p>
+        <h1 className="mt-1 text-2xl font-semibold tracking-normal">
+          General Settings
+        </h1>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Account Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" action={formAction}>
-            <Suspense fallback={<AccountForm state={state} />}>
-              <AccountFormWithData state={state} />
-            </Suspense>
-            {state.error && (
-              <p className="text-red-500 text-sm">{state.error}</p>
-            )}
-            {state.success && (
-              <p className="text-green-500 text-sm">{state.success}</p>
-            )}
-            <Button
-              type="submit"
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-              disabled={isPending}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
+      <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="space-y-4">
+          <Card>
+            <Card.Header>
+              <Card.Title className="text-sm">Account status</Card.Title>
+              <Card.Description>Identity and login profile</Card.Description>
+            </Card.Header>
+            <Card.Content className="space-y-3">
+              <div className="flex items-center gap-3 rounded bg-surface-secondary p-3">
+                <UserRound className="size-4 text-muted" />
+                <span className="text-sm font-medium">Personal account</span>
+              </div>
+              <div className="flex items-center gap-3 rounded bg-surface-secondary p-3">
+                <Mail className="size-4 text-muted" />
+                <span className="text-sm font-medium">Email sign-in</span>
+              </div>
+            </Card.Content>
+          </Card>
+        </div>
+
+        <Card>
+          <Card.Header>
+            <Card.Title>Account Information</Card.Title>
+            <Card.Description>
+              Update the public name and email on your account.
+            </Card.Description>
+          </Card.Header>
+          <Card.Content>
+            <form className="space-y-4" action={formAction}>
+              <Suspense fallback={<AccountForm state={state} />}>
+                <AccountFormWithData state={state} />
+              </Suspense>
+              {state.error && (
+                <p className="text-danger text-sm">{state.error}</p>
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+              {state.success && (
+                <p className="text-success text-sm">{state.success}</p>
+              )}
+              <Button type="submit" isDisabled={isPending}>
+                {isPending ? (
+                  <>
+                    <Spinner color="current" size="sm" className="mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 size-4" />
+                    Save changes
+                  </>
+                )}
+              </Button>
+            </form>
+          </Card.Content>
+        </Card>
+      </div>
     </section>
   );
 }

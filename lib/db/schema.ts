@@ -5,6 +5,7 @@ import {
   text,
   timestamp,
   integer,
+  uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
@@ -12,12 +13,33 @@ export const users = pgTable('users', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
+  passwordHash: text('password_hash'),
   role: varchar('role', { length: 20 }).notNull().default('member'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
   deletedAt: timestamp('deleted_at'),
 });
+
+export const oauthAccounts = pgTable(
+  'oauth_accounts',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id')
+      .notNull()
+      .references(() => users.id),
+    provider: varchar('provider', { length: 50 }).notNull(),
+    providerAccountId: varchar('provider_account_id', {
+      length: 255
+    }).notNull(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow()
+  },
+  (table) => ({
+    providerAccountUnique: uniqueIndex(
+      'oauth_accounts_provider_account_unique'
+    ).on(table.provider, table.providerAccountId)
+  })
+);
 
 export const teams = pgTable('teams', {
   id: serial('id').primaryKey(),
@@ -77,6 +99,14 @@ export const teamsRelations = relations(teams, ({ many }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
   teamMembers: many(teamMembers),
   invitationsSent: many(invitations),
+  oauthAccounts: many(oauthAccounts),
+}));
+
+export const oauthAccountsRelations = relations(oauthAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [oauthAccounts.userId],
+    references: [users.id],
+  }),
 }));
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -114,6 +144,8 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type OAuthAccount = typeof oauthAccounts.$inferSelect;
+export type NewOAuthAccount = typeof oauthAccounts.$inferInsert;
 export type Team = typeof teams.$inferSelect;
 export type NewTeam = typeof teams.$inferInsert;
 export type TeamMember = typeof teamMembers.$inferSelect;
@@ -126,6 +158,7 @@ export type TeamDataWithMembers = Team & {
   teamMembers: (TeamMember & {
     user: Pick<User, 'id' | 'name' | 'email'>;
   })[];
+  invitations: Invitation[];
 };
 
 export enum ActivityType {
@@ -138,5 +171,8 @@ export enum ActivityType {
   CREATE_TEAM = 'CREATE_TEAM',
   REMOVE_TEAM_MEMBER = 'REMOVE_TEAM_MEMBER',
   INVITE_TEAM_MEMBER = 'INVITE_TEAM_MEMBER',
+  RESEND_INVITATION = 'RESEND_INVITATION',
+  REVOKE_INVITATION = 'REVOKE_INVITATION',
   ACCEPT_INVITATION = 'ACCEPT_INVITATION',
+  SIGN_IN_WITH_OAUTH = 'SIGN_IN_WITH_OAUTH',
 }
