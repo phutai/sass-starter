@@ -8,6 +8,7 @@ import { buttonVariants } from '@heroui/styles';
 import { CircleIcon } from 'lucide-react';
 import { signIn, signUp } from './actions';
 import { ActionState } from '@/lib/auth/middleware';
+import { ThemeToggle } from '@/app/theme-toggle';
 
 export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
   const searchParams = useSearchParams();
@@ -22,6 +23,9 @@ export function Login({ mode = 'signin' }: { mode?: 'signin' | 'signup' }) {
 
   return (
     <div className="min-h-[100dvh] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
           <CircleIcon className="h-12 w-12 text-accent" />

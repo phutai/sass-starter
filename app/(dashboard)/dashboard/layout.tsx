@@ -18,6 +18,7 @@ import {
   Shield,
   Users
 } from 'lucide-react';
+import { ThemeToggle } from '@/app/theme-toggle';
 
 const navGroups = [
   {
@@ -168,6 +169,7 @@ export default function DashboardLayout({
             </div>
 
             <div className="ml-auto flex items-center gap-2">
+              <ThemeToggle />
               <Button aria-label="Notifications" isIconOnly variant="ghost">
                 <Bell className="size-5" />
               </Button>

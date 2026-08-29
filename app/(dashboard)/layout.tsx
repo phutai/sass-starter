@@ -9,6 +9,7 @@ import { signOut } from '@/app/(login)/actions';
 import { useRouter } from 'next/navigation';
 import { User } from '@/lib/db/schema';
 import useSWR, { mutate } from 'swr';
+import { ThemeToggle } from '@/app/theme-toggle';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
@@ -86,7 +87,8 @@ function Header() {
           <CircleIcon className="h-6 w-6 text-accent" />
           <span className="ml-2 text-xl font-semibold">ACME</span>
         </Link>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
+          <ThemeToggle />
           <Suspense fallback={<div className="h-9" />}>
             <UserMenu />
           </Suspense>
