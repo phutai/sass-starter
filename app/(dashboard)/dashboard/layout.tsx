@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button, Input, Label } from '@heroui/react';
@@ -19,6 +19,7 @@ import {
   Users
 } from 'lucide-react';
 import { ThemeToggle } from '@/app/theme-toggle';
+import { UserMenu } from '../user-menu';
 
 const navGroups = [
   {
@@ -117,8 +118,8 @@ export default function DashboardLayout({
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-[calc(100dvh-65px)] bg-background">
-      <div className="flex min-h-[calc(100dvh-65px)]">
+    <div className="min-h-[100dvh] bg-background">
+      <div className="flex min-h-[100dvh]">
         <div className="hidden lg:block">
           <Sidebar pathname={pathname} />
         </div>
@@ -173,6 +174,9 @@ export default function DashboardLayout({
               <Button aria-label="Notifications" isIconOnly variant="ghost">
                 <Bell className="size-5" />
               </Button>
+              <Suspense fallback={<div className="size-9" />}>
+                <UserMenu />
+              </Suspense>
             </div>
           </header>
 
